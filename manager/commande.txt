@@ -1,0 +1,5 @@
+export QUARKUS_TEST_CONTINUOUS_TESTING=disabled
+export MANAGER_TOPOLOGY_HOST=172.25.0.3
+export QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://172.25.0.4:5432/manager
+export QUARKUS_HTTP_PORT=8088
+mvn quarkus:dev

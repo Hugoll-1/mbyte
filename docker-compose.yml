@@ -74,6 +74,8 @@ services:
       KC_HTTP_ENABLED: true
       KC_HTTP_PORT: 80
       KC_PROXY_HEADERS: xforwarded
+      KC_PROXY: edge
+      KC_HOSTNAME_STRICT: false
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=mbyte.fr"
