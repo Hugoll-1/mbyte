@@ -1,8 +1,101 @@
-# code-with-quarkus
+# The M[iage].byte project :: Store
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+This module is the file store service of the Mbyte platform, built with Quarkus.
 
-If you want to learn more about Quarkus, please visit its website: https://quarkus.io/ .
+## Discord Bot Integration
+
+The store exposes a dedicated endpoint for the [Mbyte-bot](https://github.com/LucieLaury/Mbyte-bot) Discord bot.
+
+### Endpoint
+
+```
+POST /api/bot/discord
+```
+
+The bot must send the `X-Bot-Token` header with the secret token configured in `store.bot.token`.
+
+#### Request body (JSON array of messages)
+
+```json
+[
+  {
+    "channel": "general",
+    "author": "username",
+    "content": "Hello world!",
+    "timestamp": 1700000000000
+  }
+]
+```
+
+#### Response
+
+- `201 Created` with `{ "file": "discord-<timestamp>.txt" }` on success.
+- `401 Unauthorized` if the token is missing or invalid.
+- `400 Bad Request` if the messages list is empty.
+
+### Configuration
+
+In `application.properties`, set a strong secret for the bot token:
+
+```properties
+store.bot.token=your-secret-token
+```
+
+The Discord bot must be configured with the same token value and point to the store's URL, e.g.:
+
+```
+POST https://<store-host>/api/bot/discord
+X-Bot-Token: your-secret-token
+```
+
+### How messages are stored
+
+Each call to `POST /api/bot/discord` creates a plain text file named `discord-<yyyyMMdd-HHmmss-SSS>.txt` inside a `discord/` folder at the root of the store. Each line of the file has the format:
+
+```
+[<ISO-timestamp>] #<channel> <<author>> <content>
+```
+
+### Retrieving stored Discord messages
+
+All stored Discord message files are accessible through the standard store REST API (OIDC authentication required):
+
+1. **List the `discord` folder contents** — find the folder node ID first:
+
+   ```
+   GET /api/nodes           → redirects to the root node ID
+   GET /api/nodes/<root-id>/children
+   ```
+
+   Locate the node with `"name": "discord"` and note its `"id"`.
+
+2. **List messages in the discord folder**:
+
+   ```
+   GET /api/nodes/<discord-folder-id>/children
+   ```
+
+3. **Download a specific message file**:
+
+   ```
+   GET /api/nodes/<file-node-id>/content
+   ```
+
+   Or to force a download:
+
+   ```
+   GET /api/nodes/<file-node-id>/content?download=true
+   ```
+
+4. **Search across all stored Discord content** using the full-text search endpoint:
+
+   ```
+   GET /api/search?q=<your-query>
+   ```
+
+> **Which store?** Documents are stored in the **Mbyte Store** service (this module), running at port `8089`. File metadata is persisted in **PostgreSQL** (database `store`) and the actual file bytes are stored on the **filesystem** under `${store.data.home}` (default: `~/.mbyte/data`).
+
+---
 
 ## Running the application in dev mode
 
@@ -20,7 +113,7 @@ The application can be packaged using:
 ./mvnw package
 ```
 It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
+Be aware that it's not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
 
 The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
 
@@ -33,53 +126,16 @@ The application, packaged as an _über-jar_, is now runnable using `java -jar ta
 
 ## Creating a native executable
 
-You can create a native executable using: 
+You can create a native executable using:
 ```shell script
 ./mvnw package -Dnative
 ```
 
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using: 
+Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
 ```shell script
 ./mvnw package -Dnative -Dquarkus.native.container-build=true
 ```
 
 You can then execute your native executable with: `./target/code-with-quarkus-1.0.0-SNAPSHOT-runner`
 
-If you want to learn more about building native executables, please consult https://quarkus.io/guides/maven-tooling.
-
-## Related Guides
-
-- Messaging ([guide](https://quarkus.io/guides/messaging)): Produce and consume messages and implement event driven and data streaming applications
-- REST ([guide](https://quarkus.io/guides/rest)): A Jakarta REST implementation utilizing build time processing and Vert.x. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it.
-- Hibernate ORM ([guide](https://quarkus.io/guides/hibernate-orm)): Define your persistent model with Hibernate ORM and Jakarta Persistence
-- Narayana JTA - Transaction manager ([guide](https://quarkus.io/guides/transaction)): Offer JTA transaction support (included in Hibernate ORM)
-- Hibernate Validator ([guide](https://quarkus.io/guides/validation)): Validate object properties (field, getter) and method parameters for your beans (REST, CDI, Jakarta Persistence)
-- REST Qute ([guide](https://quarkus.io/guides/qute-reference#rest_integration)): Qute integration for Quarkus REST. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it.
-- OpenID Connect ([guide](https://quarkus.io/guides/security-openid-connect)): Verify Bearer access tokens and authenticate users with Authorization Code Flow
-- Scheduler ([guide](https://quarkus.io/guides/scheduler)): Schedule jobs and tasks
-- Liquibase ([guide](https://quarkus.io/guides/liquibase)): Handle your database schema migrations with Liquibase
-- REST JAXB ([guide](https://quarkus.io/guides/resteasy-reactive#xml-serialisation)): JAXB serialization support for Quarkus REST. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it.
-- JDBC Driver - PostgreSQL ([guide](https://quarkus.io/guides/datasource)): Connect to the PostgreSQL database via JDBC
-
-## Provided Code
-
-### Hibernate ORM
-
-Create your first JPA entity
-
-[Related guide section...](https://quarkus.io/guides/hibernate-orm)
-
-
-
-### REST
-
-Easily start your REST Web Services
-
-[Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
-
-### REST Qute
-
-Create your web page using Quarkus REST and Qute
-
-[Related guide section...](https://quarkus.io/guides/qute#type-safe-templates)
-
+You can learn more about building native executables by consulting https://quarkus.io/guides/maven-tooling.
